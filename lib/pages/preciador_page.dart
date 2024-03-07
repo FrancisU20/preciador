@@ -7,8 +7,8 @@ import 'package:flutter_beep/flutter_beep.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:lottie/lottie.dart';
-import 'package:preciador/models/producto_response.dart';
-import 'package:preciador/services/api_service.dart';
+import 'package:farmaprecios/models/producto_response.dart';
+import 'package:farmaprecios/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:http/http.dart' as http;
@@ -22,29 +22,26 @@ class PreciadorPage extends StatefulWidget {
 
 class PreciadorPageState extends State<PreciadorPage> {
   final TextEditingController controllerCodigo = TextEditingController();
-  String codigo = '';
   final FocusNode focusNodeCodigo = FocusNode();
   final FocusNode focusNodeBarcode = FocusNode();
-  List<Producto> productoEscaneado = [];
-  bool _isLoading = false;
-
-  bool _estadoInicial = true;
-  bool _isBlockingUI = false;
-
-  String _errorMessage = '';
-
-  bool _isMedy = true;
-
   late Timer _timer = Timer(const Duration(seconds: 20), () {});
+
+  String codigo = '';
+  String _errorMessage = '';
   int _countdown = 0;
 
+  bool _isLoading = false;
+  bool _estadoInicial = true;
+  bool _isBlockingUI = false;
+  bool _isMedy = true;
+
+  List<Producto> productoEscaneado = [];
   List<String> verticalImages = [
     'https://raw.githubusercontent.com/FrancisU20/preciador/master/images/vertical/v1.png',
     'https://raw.githubusercontent.com/FrancisU20/preciador/master/images/vertical/v2.png',
     'https://raw.githubusercontent.com/FrancisU20/preciador/master/images/vertical/v3.png',
     'https://raw.githubusercontent.com/FrancisU20/preciador/master/images/vertical/v4.png',
   ];
-
   List<String> horizontalImages = [
     'https://raw.githubusercontent.com/FrancisU20/preciador/master/images/horizontal/h1.png',
     'https://raw.githubusercontent.com/FrancisU20/preciador/master/images/horizontal/h2.png',
@@ -54,14 +51,14 @@ class PreciadorPageState extends State<PreciadorPage> {
 
   @override
   void initState() {
-    super.initState();
-    RawKeyboard.instance.addListener((_handleBarcodeRead));
     initFarmaInfo();
+    RawKeyboard.instance.addListener((_handleBarcodeRead));
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeRight,
       DeviceOrientation.landscapeLeft,
     ]);
+    super.initState();
   }
 
   @override
@@ -119,6 +116,14 @@ class PreciadorPageState extends State<PreciadorPage> {
     _timer.cancel();
   }
 
+  void _resetState() {
+    _errorMessage = '';
+    setState(() {
+      productoEscaneado = [];
+      _estadoInicial = true;
+    });
+  }
+
   Future<void> _handleBarcodeRead(RawKeyEvent event) async {
     stopTimer();
     if (event is RawKeyDownEvent) {
@@ -136,8 +141,6 @@ class PreciadorPageState extends State<PreciadorPage> {
             productoEscaneado = await getProducto(codigo);
 
             if (productoEscaneado.isEmpty) {
-              SharedPreferences prefs = await SharedPreferences.getInstance();
-              prefs.clear();
               _errorMessage = '';
               _estadoInicial = false;
               codigo = '';
@@ -182,14 +185,6 @@ class PreciadorPageState extends State<PreciadorPage> {
         }
       }
     }
-  }
-
-  void _resetState() {
-    _errorMessage = '';
-    setState(() {
-      productoEscaneado = [];
-      _estadoInicial = true;
-    });
   }
 
   void getImages(BuildContext context) async {
@@ -255,10 +250,11 @@ class PreciadorPageState extends State<PreciadorPage> {
                 SizedBox(height: screenHeight * 0.05),
                 Center(
                   child: Text(
-                    'Cargando datos',
+                    'Cargando producto',
                     style: TextStyle(
                       fontSize: screenWidth * 0.020,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w400,
+                      fontFamily: 'Poppins',
                       color: _isMedy ? Colors.indigo : Colors.black,
                       decoration: TextDecoration.none,
                     ),
@@ -410,34 +406,39 @@ class PreciadorPageState extends State<PreciadorPage> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text(
-                                  _estadoInicial
-                                      ? 'Escanea el código de barras del producto'
-                                      : _errorMessage.isEmpty
-                                          ? 'No se encontró el producto, vuelva a intentarlo.'
-                                          : _errorMessage,
-                                  textAlign: TextAlign.center,
-                                  maxLines: 5,
-                                  style: TextStyle(
-                                    fontSize: screenHeight > screenWidth
-                                        ? screenWidth * 0.03
-                                        : screenHeight *
-                                            0.035, // Ajusta el tamaño del texto
-                                    color: Colors.black,
-                                    decoration: TextDecoration.none,
+                                SizedBox(
+                                  width: _estadoInicial
+                                      ? screenWidth * 0.4
+                                      : screenWidth * 0.7,
+                                  child: Text(
+                                    _estadoInicial
+                                        ? 'Escanea el código de barras del producto'
+                                        : _errorMessage.isEmpty
+                                            ? 'No se encontró el producto, vuelva a intentarlo.'
+                                            : _errorMessage,
+                                    textAlign: TextAlign.center,
+                                    maxLines: 5,
+                                    style: TextStyle(
+                                      fontSize: screenHeight > screenWidth
+                                          ? screenWidth * 0.03
+                                          : screenHeight *
+                                              0.035, // Ajusta el tamaño del texto
+                                      color: Colors.black,
+                                      decoration: TextDecoration.none,
+                                    ),
                                   ),
                                 ),
-                                SizedBox(width: screenWidth * 0.025),
                                 Visibility(
                                   visible: _estadoInicial,
-                                  child: Container(
-                                    child: Lottie.asset(
+                                  child: Row(children: [
+                                    SizedBox(width: screenWidth * 0.025),
+                                    Lottie.asset(
                                       'assets/lottie/barcode_home.json',
                                       width: screenWidth * 0.08,
                                       height: screenWidth * 0.08,
                                       fit: BoxFit.cover,
                                     ),
-                                  ),
+                                  ]),
                                 ),
                               ],
                             ),
@@ -451,6 +452,7 @@ class PreciadorPageState extends State<PreciadorPage> {
                                 setState(() {
                                   _isLoading = true;
                                 });
+                                initFarmaInfo();
                                 _resetState();
                                 setState(() {
                                   _isLoading = false;

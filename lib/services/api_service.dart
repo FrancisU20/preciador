@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:preciador/models/producto_response.dart';
+import 'package:farmaprecios/models/producto_response.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:connectivity/connectivity.dart';
@@ -62,73 +62,80 @@ Future<Map<String, dynamic>> obtenerInformacionFarmacia() async {
 
 Future<void> renewToken() async {
   try {
-    final renewToken = await obtenerInformacionFarmacia();
-    Map<String, dynamic> data = renewToken;
-
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setString('NombreCorto', data['NombreCorto']);
-    prefs.setString('oficina', data['DataFarmacia'][0]['Cod_Oficina']);
-    prefs.setString('ipServer', data['DataFarmacia'][0]['ipServer']);
+    Map<String, dynamic> data = await obtenerInformacionFarmacia();
+
     prefs.setString('Token', data['Token']);
+    prefs.setString('ipServer', data['DataFarmacia'][0]['ipServer']);
+    prefs.setString('oficina', data['DataFarmacia'][0]['Cod_Oficina']);
+
     if (data['DataFarmacia'][0]['Nombre_Sucursal'] == 'MEDICITY') {
       prefs.setString('Nombre_Sucursal', 'MEDICITY');
     } else {
       prefs.setString('Nombre_Sucursal', 'ECONÓMICA');
     }
   } catch (e) {
-    throw ('Error renewing token: $e');
+    throw ('La farmacia no se encuentra registrada en el sistema de Preciador. Por favor, genere un ticket en FarmaBot.');
   }
 }
 
 Future<List<Producto>> getProducto(String codigoBarra) async {
-  DateTime tiempoinicial = DateTime.now();
-  DateTime tiempofinal = DateTime.now();
-  const String apiUrl = '$url/getDatosProductoPreciador';
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  String token = prefs.getString('Token') ?? '';
-  String ipServer = prefs.getString('ipServer') ?? '';
-  String oficina = prefs.getString('oficina') ?? '';
-
-  if (token == '' || ipServer == '' || oficina == '') {
-    await renewToken();
-
-    token = prefs.getString('Token') ?? '';
-    ipServer = prefs.getString('ipServer') ?? '';
-    oficina = prefs.getString('oficina') ?? '';
-  }
-
-  // Cuerpo de la solicitud
-  Map<String, dynamic> body = {
-    "ipfarmacia": ipServer, //'192.168.21.194'
-    "oficina": oficina, //'522'
-    "cod_barra": '5420024613621', //codigoBarra '7862103550720'
-    "Nombre": "",
-    "NombrePA": "",
-    "descontinuado": 1,
-    "cod_articulo": ""
-  };
-
-  // Encabezados de la solicitud
-  Map<String, String> headers = {
-    'Content-Type': 'application/json',
-    'Authorization': token,
-  };
-
   try {
-    final http.Response response = await http.post(
-      Uri.parse(apiUrl),
-      headers: headers,
-      body: jsonEncode(body),
-    );
+    const String apiUrl = '$url/getDatosProductoPreciador';
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    DateTime tiempoinicial = DateTime.now();
+    DateTime tiempofinal = DateTime.now();
+
+    // Obtener token, ipServer y oficina
+    String? token = prefs.getString('Token');
+    String? ipServer = prefs.getString('ipServer');
+    String? oficina = prefs.getString('oficina');
+
+    if (oficina == '9999') {
+      oficina = '001';
+    }
+
+    //Pruebas variables
+    //ipServer = '192.168.144.98';
+    //oficina = '615';
+
+    // Cuerpo de la solicitud
+    Map<String, dynamic> body = {
+      "ipfarmacia": ipServer,
+      "oficina": oficina,
+      "cod_barra": codigoBarra,
+      "Nombre": "",
+      "NombrePA": "",
+      "descontinuado": 1,
+      "cod_articulo": ""
+    };
+
+    // Encabezados de la solicitud
+    Map<String, String> headers = {
+      'Content-Type': 'application/json',
+      'Authorization': token!,
+    };
+
+    final http.Response response = await http
+        .post(
+          Uri.parse(apiUrl),
+          headers: headers,
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 20));
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       List<Producto> productos = [];
       if (data[0]['descripcion'] ==
           "No se ha encontrado información del producto.") {
+        tiempofinal = DateTime.now();
+        print(
+            'Tiempo de respuesta de la solicitud: ${tiempofinal.difference(tiempoinicial).inMilliseconds} ms');
         return productos;
       } else {
         productos = ProductosResponse.getProductosFromJsonDecode(data);
+
         // Imprimir el tiempo de respuesta
         tiempofinal = DateTime.now();
         print(
@@ -143,12 +150,14 @@ Future<List<Producto>> getProducto(String codigoBarra) async {
       throw ('Ha ocurrido un error al comunicarse con el servidor por favor genere un ticket en FarmaBot.');
     }
   } catch (e) {
-    if (e
-        .toString()
-        .contains("Failed host lookup: 'srvwcom.farmaenlace.com'")) {
+    if (e.toString().contains("Failed host lookup")) {
       throw ('Sin conexión a internet. Por favor, revise su conexión.');
     } else {
-      throw ('$e');
+      if (e.toString().contains("TimeoutException")) {
+        throw ('Ha excedido el tiempo limite de espera para la solicitud. Por favor, intente nuevamente.');
+      } else {
+        throw ('$e');
+      }
     }
   }
 }

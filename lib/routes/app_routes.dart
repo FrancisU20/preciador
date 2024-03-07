@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:preciador/pages/preciador_page.dart';
+import 'package:farmaprecios/pages/preciador_page.dart';
 
 class AppRoutes {
   

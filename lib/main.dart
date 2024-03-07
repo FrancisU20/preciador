@@ -1,7 +1,7 @@
 //* Librerías de Flutter
 import 'package:flutter/material.dart';
-import 'package:preciador/pages/preciador_page.dart';
-import 'package:preciador/routes/app_routes.dart';
+import 'package:farmaprecios/pages/preciador_page.dart';
+import 'package:farmaprecios/routes/app_routes.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
