@@ -1,4 +1,5 @@
-import 'dart:convert'; 
+import 'dart:convert';
+import 'dart:typed_data'; 
 import 'package:flutter/cupertino.dart';
  
 class ProductosResponse {
@@ -44,9 +45,14 @@ class ProductosResponse {
         tiene: item['TIENE'] ?? '',
         top: '',
         urlImagen: null,
+        valorIVA: item['valorIVA'] ?? 0.0,
+        imgBase64: null,
       );
       try {
         producto.urlImagen = NetworkImage(item['urlImagen']);
+        //Convertir la cadena base64 a imagen
+        Uint8List bytes = base64Decode(item['imgBase64']);
+        producto.imgBase64 = MemoryImage(bytes);
       } catch (e) {
         producto.urlImagen = null;
       }
@@ -73,6 +79,8 @@ class Producto {
   String top;
   ImageProvider? urlImagen;
   String tiene;
+  double valorIVA;
+  ImageProvider? imgBase64;
  
   Producto({
     required this.listaPrecios,
@@ -91,6 +99,8 @@ class Producto {
     required this.top,
     required this.urlImagen,
     required this.tiene,
+    required this.valorIVA,
+    required this.imgBase64,
   });
  
   factory Producto.fromRawJson(String str) =>
@@ -115,6 +125,8 @@ class Producto {
         top: json["TOP"] ?? '',
         urlImagen: json["urlImagen"] ?? '',
         tiene: json["TIENE"] ?? '',
+        valorIVA: json["valorIVA"] ?? 0.0,
+        imgBase64: json["imgBase64"] ?? '',
       );
  
   Map<String, dynamic> toJson() => {
@@ -134,6 +146,8 @@ class Producto {
         "TOP": top,
         "urlImagen": urlImagen,
         "TIENE": tiene,
+        "valorIVA": valorIVA,
+        "imgBase64": imgBase64,
       };
 }
  
